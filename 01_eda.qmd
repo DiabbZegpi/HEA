@@ -1,0 +1,203 @@
+---
+title: "01 EDA"
+author: "Diabb Zegpi D."
+format: pdf
+editor: visual
+lang: es
+execute: 
+  echo: false
+  warning: false
+  message: false
+  fig-align: 'center'
+editor_options: 
+  chunk_output_type: inline
+---
+
+El objetivo de este documento es registrar el proceso de análisis exploratorio de datos (EDA, por su sigla en inglés) sobre el conjunto de datos de los ensayos de HEA (**H**igh **E**ntropy **A**lloys).
+
+## Análisis de datos numéricos
+
+```{r}
+library(tidyverse)
+library(here)
+
+hea1 <- read_csv2(here("Data", "Base de datos 1.csv")) 
+hea2 <- read_csv2(here("Data", "Base de datos 2.csv"))
+
+hea1_selected <- 
+  hea1 |> 
+  select(
+    # `Alloy ID`, 
+    dHmix, 
+    Elect.Diff = `Elect,Diff`, 
+    VEC, 
+    Phase = Microstructure_ 
+    # IM_Structure
+  )  
+
+hea2_selected <- 
+  hea2 |> 
+  select(
+    dHmix = `ΔH_mix (kJ/mol)`, 
+    Elect.Diff = Δχ, 
+    VEC, 
+    Phase
+    # S_Phase
+  )
+
+hea_melted <- bind_rows(hea1_selected, hea2_selected)
+```
+
+Se inicia el análisis con la exploración descriptiva del dataset. Las dimensiones del conjunto de datos son `r nrow(hea_melted)` registros por `r ncol(hea_melted)` variables. La @tbl-numeric-skim ilustra los estadísticos descriptivos de las variables numéricas del dataset.
+
+```{r}
+# ggplot2 theme
+theme_set(theme_classic())
+theme_update(
+  text = element_text(size = 14),
+  axis.title = element_text(size = 12),
+  strip.background = element_blank()
+)
+
+cool_color <- "#DCEEF3"
+red_color <- "#E31B23"
+dark_color <- "#003366"
+accent_color <- "#FFC325"
+medium_color <- "#005CAB"
+gray_color <- "#E6F1EE"
+update_geom_defaults("point", list(color = medium_color))
+update_geom_defaults("line", list(color = medium_color))
+update_geom_defaults("col", list(color = NA, fill = medium_color))
+update_geom_defaults("bar", list(color = "#FFFFFF", fill = medium_color))
+```
+
+```{r}
+#| tbl-cap: "Estadísticos descriptivos de las variables numéricas: tasa de valores faltantes; media aritmética; desviación estándar; mínimo; percentil 25; mediana (p50); percentil 75; máximo."
+#| label: tbl-numeric-skim
+library(skimr)
+my_skim <- skim_with(numeric = sfl(hist = NULL))
+my_skim(hea_melted) |> 
+  yank("numeric") |> 
+  select(-n_missing) |> 
+  mutate(complete_rate = paste0(100 - complete_rate * 100, "%")) |> 
+  rename(
+    variable = skim_variable,
+    "tasa de faltantes" = complete_rate, 
+    media = mean, 
+    "desv. est." = sd,
+    "mínimo" = p0,
+    "máximo" = p100
+  ) |> 
+  knitr::kable(digits = 2)
+
+cv_dHmix <- abs(sd(hea_melted$dHmix) / mean(hea_melted$dHmix))
+cv_Elect.Diff <- abs(sd(hea_melted$Elect.Diff) / mean(hea_melted$Elect.Diff))
+cv_VEC <- abs(sd(hea_melted$VEC) / mean(hea_melted$VEC))
+```
+
+De la @tbl-numeric-skim destaca que ninguna de las 3 variables numéricas presenta datos faltantes. La variable `dHmix`, ostenta una alta desviación estándar respecto de su media ($CV=$ `r round(cv_dHmix, 2)`), lo que sugiere una distribución con asimetría negativa. Lo contrario puede decirse de la variable Elect.Diff ($CV=$ `r round(cv_Elect.Diff, 2)`), que en conjunto con su alta dispersión, su distribución presenta asimetría positiva. Finalmente, la variable `VEC` es la que tiene menor coeficiente de variación ($CV=$ `r round(cv_VEC, 2)`), exhibiendo la distribución menos asimétrica de las 3. Las distribuciones de las variables numéricas se ilustran en la @fig-distr. Los puntos de alta densidad de la `Elect.Diff` se explican por la alta dispersión de esta variable; una transformación matemática del tipo logaritmo o raíz cuadrada podrían reducir la asimetría de su distribución. En cambio, `VEC` posee una distribución bimodal, por tanto, un análisis bivariado y/o de clusters ayudaría a arrojar luces sobre el factor que afecta su distribución.
+
+```{r}
+#| label: fig-distr
+#| fig-cap: "Estimación de densidad de las variables numéricas mediante kernel gaussiano."
+#| fig-width: 7
+#| fig-height: 3.5
+hea_melted |>
+  pivot_longer(cols = where(is.numeric)) |> 
+  ggplot(aes(x = value)) +
+  geom_density(aes(fill = name, color = name), show.legend = FALSE, alpha = 0.8) +
+  scale_fill_viridis_d(end = 0.8, option = "E") +
+  scale_color_viridis_d(end = 0.8, option = "E") +
+  facet_wrap(~name, scales = "free", ncol = 3) +
+  scale_y_continuous(expand = expansion(mult = 0.02)) +
+  labs(x = NULL, y = "Densidad") 
+```
+
+Las relaciones entre las variables numéricas se ilustran en la @fig-scatter; en el gráfico se `dHmix` contra `Elect.Diff` se aprecia la presencia de outliers, valores extremos que sesgan la distribución de la variable ordenada. La gráfica de en medio demuestra la separación de conglomerados de la variable `VEC`, sin embargo, esta división de grupos no se perceptible solamente usando `dHmix`, debido a que los grupos son homogéneos en esta dimensión. Finalmente, la distribución de `VEC` a lo largo de `Elect.Diff` es aparentemente uniforme, con media y varianza estacionarias.
+
+```{r}
+#| label: fig-scatter
+#| fig-cap: "Nubes de dispersión de las variables numéricas. Elect.Diff es transformada por la función logaritmo con desplazamiento de 0.001."
+#| fig-width: 8
+#| fig-height: 3.5
+library(patchwork)
+p1 <- 
+  ggplot(hea_melted, aes(x = dHmix, y = Elect.Diff + 0.001)) + 
+  geom_point(alpha = 0.6, color = viridisLite::cividis(3, end = 0.8)[1]) +
+  scale_y_log10() +
+  labs(y = "Elect.Diff (escala logarítmica)")
+
+p2 <- 
+  ggplot(hea_melted, aes(x = dHmix, y = VEC)) + 
+  geom_point(alpha = 0.6, color = viridisLite::cividis(3, end = 0.8)[2])
+
+p3 <- 
+  ggplot(hea_melted, aes(x = VEC, y = Elect.Diff + 0.001)) + 
+  geom_point(alpha = 0.6, color = viridisLite::cividis(3, end = 0.8)[3]) +
+  scale_y_log10() +
+  labs(y = "Elect.Diff (escala logarítmica)")
+
+p1 + p2 + p3
+```
+
+La investigación de los valores fuera de rango y su eventual corrección (si procediere), es uno de los objetivos relevantes para mejorar las propiedades de distribución de las variables, específicamente `Elect.Diff`.
+
+Los diagramas de dispersión de la @fig-scatter sugieren que no hay relaciones lineales entre las variables, pero sí existen conglomerados de observaciones. Dos métodos de clustering sugeridos para determinar los grupos presentes en los datos son: k-Means (clustering elíptico basado en centroides) y DBScan (clustering basado en densidades), con sus respectivas etapas de pre procesamiento.
+
+Con fines predictivos, se recomienda la utilización de algoritmos que reconozcan separaciones en los datos, tales como los algoritmos basados en árboles de decisión (random forest, XGBoost, etc.) y algoritmos de proximidad entre vecinos (k-NN).
+
+## Análisis de datos categóricos
+
+La variable categórica en el dataset es `Phase`. A continuación los estadísticos descriptivos de esta variable (@tbl-chr).
+
+```{r}
+#| tbl-cap: "Estadísticos descriptivos de la variable Phase."
+#| label: tbl-chr
+my_skim(hea_melted) |> 
+  yank("character") |> 
+  select(-c(n_missing, min, max, empty, whitespace)) |> 
+  mutate(complete_rate = paste0(round(100 - complete_rate * 100, 2), "%")) |> 
+  rename(
+    variable = skim_variable,
+    "tasa de faltantes" = complete_rate,
+    "n únicos" = n_unique
+  ) |> 
+  knitr::kable(digits = 2)
+```
+
+Se aprecia que esta variable sí contiene valores faltantes, aunque marginales. Todos los valores faltantes tienen valores de `VEC` en el rango 7-8. Otra característica de esta variable es que tiene 80 niveles, equivalente a `r trunc(nrow(hea_melted) / 80)` aleaciones por `Phase`, en promedio.
+
+Las 30 aleaciones más frecuentes se encuentran en la @tbl-phases.
+
+```{r}
+#| tbl-cap: "30 Phases más frecuentes. Las Phases menos frecuentes fueron agrupadas en Otras; los valores faltantes se denotan NA."
+#| label: tbl-phases
+common_phases <- 
+  hea_melted |> 
+  mutate(Phase = fct_lump_n(Phase, 29, other_level = "Otras")) |>
+  count(Phase, sort = TRUE)
+
+knitr::kable(
+  list(common_phases[1:10, ], common_phases[11:20, ], common_phases[21:30, ]),
+  booktabs = TRUE
+)
+```
+
+Analizar 80 niveles del factor `Phase` puede ser sobrecogedor. Por esta razón, se decide retener las categorías más frecuencias para simplificar el análisis. Tal como ejemplifica la @fig-phase-density, las modas de la distribución de `VEC` son causadas por dos de los niveles más frecuentes: BCC y FCC.
+
+Las distribuciones bien separadas convierten a `VEC` en candidato a predictor de la variable `Phase.`
+
+```{r}
+#| fig-cap: "El factor que separa la distribución de VEC es la fase."
+#| label: fig-phase-density
+#| fig-width: 4
+#| fig-height: 3.5
+hea_melted |> 
+  filter(Phase %in% c("BCC", "FCC", "IM")) |> 
+  ggplot(aes(x = VEC)) + 
+  geom_density(aes(fill = Phase, color = Phase), alpha = 0.8) +
+  scale_fill_viridis_d(option = "E", end = 0.8) + 
+  scale_color_viridis_d(option = "E", end = 0.8) +
+  scale_y_continuous(expand = expansion(mult = 0.02)) +
+  labs(y = "Densidad")
+```
