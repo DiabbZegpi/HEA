@@ -1,0 +1,56 @@
+---
+title: "02 ML benchmark"
+author: "Diabb Zegpi D."
+format: pdf
+editor: visual
+lang: es
+execute: 
+  echo: false
+  warning: false
+  message: false
+  fig-align: 'center'
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r}
+library(tidyverse)
+library(here)
+
+hea <- read_csv(here("Data", "HEA melted.csv"))
+hea |> count(Phase, sort = TRUE)
+```
+
+```{r}
+# ggplot2 theme
+theme_set(theme_classic())
+theme_update(
+  text = element_text(size = 14),
+  axis.title = element_text(size = 12),
+  strip.background = element_blank()
+)
+
+cool_color <- "#DCEEF3"
+red_color <- "#E31B23"
+dark_color <- "#003366"
+accent_color <- "#FFC325"
+medium_color <- "#005CAB"
+gray_color <- "#E6F1EE"
+update_geom_defaults("point", list(color = medium_color))
+update_geom_defaults("line", list(color = medium_color))
+update_geom_defaults("col", list(color = NA, fill = medium_color))
+update_geom_defaults("bar", list(color = "#FFFFFF", fill = medium_color))
+```
+
+```{r}
+hea |> 
+  mutate(fase = case_when(
+    # Phase == "BCC" ~ "BCC",
+    # Phase == "FCC" ~ "FCC",
+    # Phase == "FCC + Im" ~ "FCC + Im",
+    # Phase == "BCC + IM" ~ "BCC + IM",
+    str_detect(Phase, regex("[FB]CC.+[FB]CC", ignore_case = T)) ~ "FCC + BCC",
+    TRUE ~ Phase
+  )) |> 
+  count(fase, sort = TRUE)
+```
