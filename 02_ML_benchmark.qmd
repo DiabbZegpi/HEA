@@ -1,0 +1,84 @@
+---
+title: "Modelos de Clasificación de Fases de HEA"
+author: "Diabb Zegpi D."
+format: pdf
+editor: visual
+lang: es
+bibliography: references.bib
+execute: 
+  echo: false
+  warning: false
+  message: false
+  fig-align: 'center'
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r packages}
+library(tidyverse)
+library(tidymodels)
+library(here)
+library(knitr)
+
+tidymodels_prefer(quiet = TRUE)
+```
+
+```{r plot-theme}
+theme_set(theme_classic())
+theme_update(
+  text = element_text(size = 14),
+  axis.title = element_text(size = 12),
+  strip.background = element_blank()
+)
+
+cool_color <- '#DCEEF3'
+red_color <- '#E31B23'
+dark_color <- '#003366'
+accent_color <- '#FFC325'
+medium_color <- '#005CAB'
+gray_color <- '#E6F1EE'
+update_geom_defaults('point', list(color = medium_color))
+update_geom_defaults('line', list(color = medium_color))
+update_geom_defaults('col', list(color = NA, fill = medium_color))
+update_geom_defaults('bar', list(color = '#FFFFFF', fill = medium_color))
+```
+
+## Metodología
+
+El producto del proceso de ciencia de datos es un modelo predictivo para las fases de las aleaciones de alta entropía (HEA), y las etapas que constituyen tal proceso son la extracción, manipulación, transformación y visualización de datos, modelización (aprendizaje automático) y comunicación de resultados [@JSSv059i10]. Este proceso es una adaptación moderna del proceso KDD [@fayyad1996data], que utiliza principios de desarrollo de software *tidy*, adoptados por la comunidad de científicos de datos que utilizan el lenguaje de programación R. La @fig-dsModel ilustra el proceso de ciencia de datos, desde la etapa de obtención de datos (**Import**) hasta la comunicación de resultados (**Communicate**), incluyendo el ciclo de entrenamiento y optimización de modelos [ver @wickham2016r, capítulo 2].
+
+![El proceso de ciencia de datos descrito por @wickham2016r.](data-science-model.png){#fig-dsModel width="60%"}
+
+## Software
+
+El software empleado en el análisis es de código abierto y está basado en el lenguaje de programación R [@team2013r]. R fue diseñado especialmente para análisis de datos y modelización [@kuhn2022tidy, capítulo 1]. Las estructuras de datos, gramática y filosofía de diseño del código usado en este trabajo son proveídas por la colección de paquetes para manipulación y visualización de datos denominada `tidyverse` [@wickham2019welcome], y la colección de paquetes de aprendizaje automático llamada `tidymodels` [@kuhn2020tidymodels]. Las versiones del software empleado se exponen en la @tbl-software.
+
+```{r}
+#| label: tbl-software
+#| tbl-cap: 'Software y versiones.'
+
+
+packages <- tibble(software = c(
+  'tidyverse',
+  'tidymodels'
+))
+
+pkg_versions <- packages |> 
+  mutate(version = map_chr(software, function(x) {
+    x |> packageVersion() |> pluck(1) |> as.character()
+  }))
+
+tibble(
+  software = 'R',
+  version = R.version$version.string |> str_extract('\\d\\.\\d\\.\\d')
+) |> 
+  bind_rows(pkg_versions) |> 
+  rename('Software' = software, 'Versión' = version) |> 
+  kable()
+```
+
+## Referencias
+
+<div>
+
+</div>

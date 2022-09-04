@@ -48,6 +48,11 @@ hea2_selected <-
 hea_melted <- bind_rows(hea1_selected, hea2_selected)
 ```
 
+```{r}
+#| eval: false
+write_csv(hea_melted, file = here("Data", "HEA melted.csv"))
+```
+
 Se inicia el análisis con la exploración descriptiva del dataset. Las dimensiones del conjunto de datos son `r nrow(hea_melted)` registros por `r ncol(hea_melted)` variables. La @tbl-numeric-skim ilustra los estadísticos descriptivos de las variables numéricas del dataset.
 
 ```{r}
