@@ -57,25 +57,26 @@ cv_strategy <- vfold_cv(
 # EDA ====
 
 # There are 2 outliers in the `Elect.Diff` variable; let's explore them
-ggplot(data = train_phases,
-       mapping = aes(x = Phase, y = Elect.Diff, fill = Phase)) +
-  geom_boxplot(show.legend = FALSE)
 
-train_phases |> 
-  arrange(desc(Elect.Diff))
+# ggplot(data = train_phases,
+#        mapping = aes(x = Phase, y = Elect.Diff, fill = Phase)) +
+#   geom_boxplot(show.legend = FALSE)
+# 
+# train_phases |> 
+#   arrange(desc(Elect.Diff))
 
 # Usually, high `Elect.Diff` means negative `dHmix`, but this is not the case
 # Both outliers correspond to the BCC phase, the most populated one
 # How does the boxplot look without the outliers?
 
-train_phases |> 
-  arrange(desc(Elect.Diff)) |> 
-  slice(3:nrow(cur_data())) |> 
-  mutate(label = 'Without outliers') |> 
-  bind_rows(train_phases |> mutate(label = 'Original data')) |> 
-  ggplot(mapping = aes(x = Phase, y = Elect.Diff, fill = Phase)) +
-  geom_boxplot(show.legend = FALSE) + 
-  facet_wrap(~label, ncol = 2, scales = 'free_y')
+# train_phases |> 
+#   arrange(desc(Elect.Diff)) |> 
+#   slice(3:nrow(cur_data())) |> 
+#   mutate(label = 'Without outliers') |> 
+#   bind_rows(train_phases |> mutate(label = 'Original data')) |> 
+#   ggplot(mapping = aes(x = Phase, y = Elect.Diff, fill = Phase)) +
+#   geom_boxplot(show.legend = FALSE) + 
+#   facet_wrap(~label, ncol = 2, scales = 'free_y')
 
 # It's clear that outliers will have a significant effect on distance based models
 # such as KNN and regularized regressions
@@ -125,7 +126,7 @@ mlp_spec <- mlp(
   set_engine('keras')
 
 rf_spec <- rand_forest(
-  trees = 500,
+  trees = 2000,
   mtry = tune(),
   min_n = tune()
 ) |> 
@@ -220,28 +221,26 @@ multinomial_results <- tune_grid(
 #   control = control_stack_grid()
 # )
 
+rf_results <- tune_grid(
+  rf_wf, 
+  grid = rf_grid,
+  resamples = cv_strategy,
+  metrics = metric,
+  control = control_stack_grid()
+)
+
+xgb_results <- tune_grid(
+  xgb_wf,
+  grid = xgb_grid,
+  resamples = cv_strategy,
+  metrics = metric,
+  control = control_stack_grid()
+)
+
 saveRDS(knn_results, file = here('Model results', 'knn_results.rds'))
 saveRDS(multinomial_results, file = here('Model results', 'multinomial_results.rds'))
 # saveRDS(mlp_results, file = here('Model results', 'mlp_results.rds'))
+saveRDS(rf_results, file = here('Model results', 'rf_results.rds'))
+saveRDS(xgb_results, file = here('Model results', 'xgb_results.rds'))
 
 stopImplicitCluster()
-
-# Stacks ====
-
-knn_stack <- stacks() |> 
-  add_candidates(knn_results)
-
-stacks_result <- blend_predictions(knn_stack, metric = metric)
-autoplot(stacks_result, type = 'member')
-autoplot(stacks_result, type = 'weights')
-stacks_fit <- fit_members(stacks_result)
-collect_parameters(stacks_fit, "knn_results")
-
-
-stacks_vs_members <- test_phases |> 
-  select(Phase) |> 
-  bind_cols(predict(stacks_fit, new_data = test_phases, members = TRUE))
-
-map_dfr(stacks_vs_members, accuracy, truth = Phase, data = stacks_vs_members) |> 
-  mutate(member = colnames(stacks_vs_members))
-
