@@ -54,6 +54,7 @@ autoplot(stacks_blended, type = 'member')
 autoplot(stacks_blended, type = 'weights')
 
 stacks_fit <- fit_members(stacks_blended)
+stopImplicitCluster()
 collect_parameters(stacks_fit, "knn_results")
 
 

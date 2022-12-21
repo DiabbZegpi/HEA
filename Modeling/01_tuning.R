@@ -45,7 +45,7 @@ splits <- initial_split(
 
 train_phases <- training(splits)
 test_phases <- testing(splits)
-metric <- metric_set(accuracy, roc_auc)
+metric <- metric_set(accuracy, roc_auc, precision)
 
 set.seed(234)
 cv_strategy <- vfold_cv(
