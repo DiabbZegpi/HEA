@@ -12,7 +12,8 @@ theme_update(text = element_text(size = 14),
              legend.key = element_rect(fill = NA),
              legend.text = element_text(size = 12),
              axis.ticks = element_blank(),
-             aspect.ratio = 1)
+             aspect.ratio = 1,
+             panel.spacing = unit(2, 'lines'))
 
 list.files(here('Model results')) |> 
   enframe(name = NULL, value = 'filename') |> 
@@ -21,9 +22,6 @@ list.files(here('Model results')) |>
   set_names(nm = str_remove(list.files(here('Model results')), '\\.rds$')) |> 
   list2env(envir = .GlobalEnv)
 
-# knn_plot <- knn_results |> 
-#   autoplot() +
-#   scale_color_brewer(palette = 'Set1') 
 
 knn_plot <- knn_results |> 
   collect_metrics() |> 
@@ -33,12 +31,32 @@ knn_plot <- knn_results |>
   geom_point(size = 1.5) +
   scale_color_brewer(palette = 'Set1') +
   facet_grid(.metric ~ dist_power, scales = 'free_y',
-             labeller = labeller(.metric = c('accuracy' = 'Accuracy', 'roc_auc' = 'ROC AUC'))) +
+             labeller = labeller(.metric = c(
+               'accuracy' = 'Accuracy', 
+               'roc_auc' = 'ROC AUC',
+               "precision" = "Precision"
+             ))) +
   labs(x = '# Nearest Neighbors', y = NULL, color = 'Distance Weighting Function') 
-  
 
-plot_width <- 9.5
-plot_height <- 7.5
+
+(
+  knn_confusion_matrix <- knn_results |> 
+    conf_mat_resampled(parameters = select_best(knn_results, "accuracy")) |> 
+    ggplot(aes(x = Truth, y = Prediction, fill = Freq, label = Freq)) +
+    geom_tile(color = "gray") +
+    geom_text() +
+    scale_fill_gradient2(low = "#ffffff", high = "#ef8a62", mid = "#ffffff", midpoint = 3) +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+          panel.grid = element_blank(),
+          legend.title = element_text(vjust = 0.7),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          axis.ticks = element_blank()) +
+    labs(fill = "Frequency (%)", x = "True class", y = "Predicted class")
+)
+
+plot_width <- 11
+plot_height <- 9
 plot_dpi <- 700
 plot_path <- function(name) here('Plots', paste0(name, '.tiff'))
 plot_save <- function(name, plot, width = plot_width, height = plot_height, dpi = plot_dpi) {
@@ -53,6 +71,7 @@ plot_save <- function(name, plot, width = plot_width, height = plot_height, dpi 
 }
 
 plot_save('knn_results', knn_plot)
+plot_save('knn_confusion_matrix', knn_confusion_matrix)
 
 bind_rows(
   knn_results |> show_best('accuracy', n = 1) |> transmute(model = 'KNN', mean, std_err),
