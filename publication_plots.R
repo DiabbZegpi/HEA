@@ -23,6 +23,67 @@ list.files(here('Model results')) |>
   list2env(envir = .GlobalEnv)
 
 
+# Plot function -----------------------------------------------------------
+
+plot_width <- 11
+plot_height <- 9
+plot_dpi <- 700
+plot_path <- function(name) here('Plots', paste0(name, '.png'))
+plot_save <- function(name, plot, width = plot_width, height = plot_height, dpi = plot_dpi) {
+  ggsave(
+    filename = plot_path(name), 
+    plot = plot,
+    width = width, 
+    height = height, 
+    device = 'png',
+    dpi = plot_dpi
+  )
+}
+
+plot_confusion_matrix <- function(.data, fill_by) {
+  
+  if (deparse(substitute(fill_by)) == 'Truth') {
+    direction <- 'columns'
+  } else {
+    direction <- 'rows'
+  }
+  
+  .data |> 
+    conf_mat_resampled(parameters = select_best(.data, "accuracy")) |> 
+    group_by({{ fill_by }}) |> 
+    mutate(Freq = Freq / sum(Freq)) |> 
+    ungroup() |> 
+    ggplot(aes(
+      x = Truth, y = Prediction, fill = Freq, 
+      label = ifelse(!is.na(Freq), round(Freq, 2), '-')
+    )) +
+    geom_tile(color = "gray") +
+    geom_text() +
+    scale_fill_gradient2(low = "#ffffff", high = "#ef8a62", mid = "#ffffff", 
+                         limits = c(0, 1), breaks = seq(0, 1, by = 0.2),
+                         na.value = 'white') +
+    guides(fill = guide_colorbar(barwidth = 10)) +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+          panel.grid = element_blank(),
+          legend.title = element_text(vjust = 0.5, hjust = 0.5, margin = margin(r = 10)),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          axis.ticks = element_blank()) +
+    labs(fill = str_glue('Frequency\n({direction} add to 1)'), x = 'True class', y = 'Predicted class')
+}
+
+
+# Making plots ------------------------------------------------------------
+
+knn_confmat_recall <- plot_confusion_matrix(knn_results, Truth)
+knn_confmat_precision <- plot_confusion_matrix(knn_results, Prediction)  
+multinomial_confmat_recall <- plot_confusion_matrix(multinomial_results, Truth)
+multinomial_confmat_precision <- plot_confusion_matrix(multinomial_results, Prediction)
+rf_confmat_recall <- plot_confusion_matrix(rf_results, Truth)
+rf_confmat_precision <- plot_confusion_matrix(rf_results, Prediction)
+xgb_confmat_recall <- plot_confusion_matrix(xgb_results, Truth)
+xgb_confmat_precision <- plot_confusion_matrix(xgb_results, Prediction)
+
 (
   knn_plot <- knn_results |> 
     collect_metrics() |> 
@@ -38,22 +99,6 @@ list.files(here('Model results')) |>
                  "precision" = "Precision"
                ))) +
     labs(x = '# Nearest Neighbors', y = NULL, color = 'Distance Weighting Function') 
-)
-
-(
-  knn_confusion_matrix <- knn_results |> 
-    conf_mat_resampled(parameters = select_best(knn_results, "accuracy")) |> 
-    ggplot(aes(x = Truth, y = Prediction, fill = Freq, label = Freq)) +
-    geom_tile(color = "gray") +
-    geom_text() +
-    scale_fill_gradient2(low = "#ffffff", high = "#ef8a62", mid = "#ffffff", midpoint = 3) +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
-          panel.grid = element_blank(),
-          legend.title = element_text(vjust = 0.7),
-          panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank(),
-          axis.ticks = element_blank()) +
-    labs(fill = "Frequency (%)", x = "True class", y = "Predicted class")
 )
 
 (
@@ -76,22 +121,6 @@ list.files(here('Model results')) |>
 )
 
 (
-  multinomial_confusion_matrix <- multinomial_results |> 
-    conf_mat_resampled(parameters = select_best(multinomial_results, "accuracy")) |> 
-    ggplot(aes(x = Truth, y = Prediction, fill = Freq, label = Freq)) +
-    geom_tile(color = "gray") +
-    geom_text() +
-    scale_fill_gradient2(low = "#ffffff", high = "#ef8a62", mid = "#ffffff", midpoint = 3) +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
-          panel.grid = element_blank(),
-          legend.title = element_text(vjust = 0.7),
-          panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank(),
-          axis.ticks = element_blank()) +
-    labs(fill = "Frequency (%)", x = "True class", y = "Predicted class")
-)
-
-(
   rf_plot <- rf_results |> 
     collect_metrics() |> 
     mutate(mtry = factor(mtry)) |> 
@@ -106,22 +135,6 @@ list.files(here('Model results')) |>
                  "precision" = "Precision"
                ))) +
     labs(x = 'Minimal Node Size', y = NULL, color = '# Randomly Selected Predictors') 
-)
-
-(
-  rf_confusion_matrix <- rf_results |> 
-    conf_mat_resampled(parameters = select_best(rf_results, "accuracy")) |> 
-    ggplot(aes(x = Truth, y = Prediction, fill = Freq, label = Freq)) +
-    geom_tile(color = "gray") +
-    geom_text() +
-    scale_fill_gradient2(low = "#ffffff", high = "#ef8a62", mid = "#ffffff", midpoint = 3) +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
-          panel.grid = element_blank(),
-          legend.title = element_text(vjust = 0.7),
-          panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank(),
-          axis.ticks = element_blank()) +
-    labs(fill = "Frequency (%)", x = "True class", y = "Predicted class")
 )
 
 (
@@ -144,22 +157,6 @@ list.files(here('Model results')) |>
                  'learn_rate' = 'Learning Rate (log-10)'
                ))) +
     labs(x = NULL, y = NULL) 
-)
-
-(
-  xgb_confusion_matrix <- xgb_results |> 
-    conf_mat_resampled(parameters = select_best(xgb_results, "accuracy")) |> 
-    ggplot(aes(x = Truth, y = Prediction, fill = Freq, label = Freq)) +
-    geom_tile(color = "gray") +
-    geom_text() +
-    scale_fill_gradient2(low = "#ffffff", high = "#ef8a62", mid = "#ffffff", midpoint = 3) +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
-          panel.grid = element_blank(),
-          legend.title = element_text(vjust = 0.7),
-          panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank(),
-          axis.ticks = element_blank()) +
-    labs(fill = "Frequency (%)", x = "True class", y = "Predicted class")
 )
 
 (
@@ -205,34 +202,23 @@ list.files(here('Model results')) |>
 )
 
 
-plot_width <- 11
-plot_height <- 9
-plot_dpi <- 700
-plot_path <- function(name) here('Plots', paste0(name, '.png'))
-plot_save <- function(name, plot, width = plot_width, height = plot_height, dpi = plot_dpi) {
-  ggsave(
-    filename = plot_path(name), 
-    plot = plot,
-    width = width, 
-    height = height, 
-    device = 'png',
-    dpi = plot_dpi
-  )
-}
+
 
 plot_save('knn_results', knn_plot)
-plot_save('knn_confusion_matrix', knn_confusion_matrix)
 plot_save('multinomial_results', multinomial_plot)
-plot_save('multinomial_confusion_matrix', multinomial_confusion_matrix)
 plot_save('rf_results', rf_plot)
-plot_save('rf_confusion_matrix', rf_confusion_matrix)
 plot_save('xgb_results', xgb_plot)
-plot_save('xgb_confusion_matrix', xgb_confusion_matrix)
 plot_save('ensemble_results', stacks_plot)
 plot_save('overall_results', overall_results)
 
 
+plot_save('knn_confmat_recall', knn_confmat_recall)
+plot_save('multinomial_confmat_recall', multinomial_confmat_recall)
+plot_save('rf_confmat_recall', rf_confmat_recall)
+plot_save('xgb_confmat_recall', xgb_confmat_recall)
 
-
-
+plot_save('knn_confmat_precision', knn_confmat_precision)
+plot_save('multinomial_confmat_precision', multinomial_confmat_precision)
+plot_save('rf_confmat_precision', rf_confmat_precision)
+plot_save('xgb_confmat_precision', xgb_confmat_precision)
 
