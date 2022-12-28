@@ -162,18 +162,60 @@ list.files(here('Model results')) |>
     labs(fill = "Frequency (%)", x = "True class", y = "Predicted class")
 )
 
+(
+  stacks_plot <- stacks_blended$metrics |> 
+    filter(.metric == 'accuracy') |> 
+    mutate(penalty = log10(penalty)) |> 
+    ggplot(aes(x = penalty, y = mean)) +
+    geom_line() +
+    geom_pointrange(aes(ymin = mean - 1.96 * std_err, ymax = mean + 1.96 * std_err)) +
+    geom_text(
+      data = stacks_blended$metrics |> 
+        select(penalty, .metric, mean) |> 
+        pivot_wider(names_from = .metric, values_from = mean) |> 
+        mutate(num_members = round(num_members),
+               penalty = log10(penalty)),
+      aes(x = penalty, y = accuracy, label = num_members),
+      inherit.aes = FALSE,
+      size = 5, 
+      nudge_x = 0.012,
+      nudge_y = 0.010
+    ) +
+    labs(x = 'Amount of Lasso Regularization (log-10)',
+         y = 'Mean Accuracy and 95% CI',
+         subtitle = 'The number indicates the quantity of remaining\npredictors (models) in the ensemble')
+)
+
+(
+  overall_results <- bind_rows(
+    knn_results |> show_best('accuracy', n = 1) |> transmute(model = 'KNN', mean, std_err),
+    multinomial_results |> show_best('accuracy', n = 1) |> transmute(model = 'Multinomial Reg', mean, std_err),
+    xgb_results |> show_best('accuracy', n = 1) |> transmute(model = 'XGBoost', mean, std_err),
+    rf_results |> show_best('accuracy', n = 1) |> transmute(model = 'Random Forest', mean, std_err),
+    stacks_blended$metrics |> filter(.metric == 'accuracy') |> slice_max(mean, with_ties = FALSE) |> transmute(model = 'Ensemble', mean, std_err)
+  ) |> 
+    mutate(low_95 = mean - 1.96 * std_err,
+           high_95 = mean + 1.96 * std_err,
+           model = fct_reorder(model, mean)) |> 
+    ggplot(aes(x = model, y = mean, color = model, ymin = low_95, ymax = high_95, label = round(mean, 2))) +
+    geom_pointrange(show.legend = FALSE) +
+    geom_text(color = 'black', nudge_x = 0.3, size = 5) +
+    scale_color_brewer(palette = 'Set1') +
+    labs(x = NULL, y = 'Cross-validation accuracy and 95% CI')
+)
+
 
 plot_width <- 11
 plot_height <- 9
 plot_dpi <- 700
-plot_path <- function(name) here('Plots', paste0(name, '.tiff'))
+plot_path <- function(name) here('Plots', paste0(name, '.png'))
 plot_save <- function(name, plot, width = plot_width, height = plot_height, dpi = plot_dpi) {
   ggsave(
     filename = plot_path(name), 
     plot = plot,
     width = width, 
     height = height, 
-    device = 'tiff',
+    device = 'png',
     dpi = plot_dpi
   )
 }
@@ -186,22 +228,9 @@ plot_save('rf_results', rf_plot)
 plot_save('rf_confusion_matrix', rf_confusion_matrix)
 plot_save('xgb_results', xgb_plot)
 plot_save('xgb_confusion_matrix', xgb_confusion_matrix)
+plot_save('ensemble_results', stacks_plot)
+plot_save('overall_results', overall_results)
 
-bind_rows(
-  knn_results |> show_best('accuracy', n = 1) |> transmute(model = 'KNN', mean, std_err),
-  multinomial_results |> show_best('accuracy', n = 1) |> transmute(model = 'Multinomial Reg', mean, std_err),
-  xgb_results |> show_best('accuracy', n = 1) |> transmute(model = 'XGBoost', mean, std_err),
-  rf_results |> show_best('accuracy', n = 1) |> transmute(model = 'Random Forest', mean, std_err),
-  stacks_blended$metrics |> filter(.metric == 'accuracy') |> slice_max(mean, with_ties = FALSE) |> transmute(model = 'Ensemble', mean, std_err)
-) |> 
-  mutate(low_95 = mean - 1.96 * std_err,
-         high_95 = mean + 1.96 * std_err,
-         model = fct_reorder(model, mean)) |> 
-  ggplot(aes(x = model, y = mean, color = model, ymin = low_95, ymax = high_95, label = round(mean, 2))) +
-  geom_pointrange(show.legend = FALSE) +
-  geom_text(color = 'black', nudge_x = 0.3, size = 5) +
-  scale_color_brewer(palette = 'Set1') +
-  labs(x = NULL, y = 'Cross-validation accuracy with 95% CI')
 
 
 
