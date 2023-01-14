@@ -2,6 +2,7 @@ library(tidyverse)
 library(tidymodels)
 library(here)
 library(ggpubr)
+library(stacks)
 
 tidymodels_prefer()
 theme_set(theme_pubclean())
@@ -22,6 +23,13 @@ list.files(here('Model results')) |>
   set_names(nm = str_remove(list.files(here('Model results')), '\\.rds$')) |> 
   list2env(envir = .GlobalEnv)
 
+hea <- read_csv(here('Data', 'HEA cleaned.csv'))
+set.seed(123)
+splits <- initial_split(
+  hea |> mutate(Phase = factor(Phase)), 
+  strata = 'Phase',
+  prop = 7/10
+)
 
 # Plot function -----------------------------------------------------------
 
@@ -83,6 +91,64 @@ rf_confmat_recall <- plot_confusion_matrix(rf_results, Truth)
 rf_confmat_precision <- plot_confusion_matrix(rf_results, Prediction)
 xgb_confmat_recall <- plot_confusion_matrix(xgb_results, Truth)
 xgb_confmat_precision <- plot_confusion_matrix(xgb_results, Prediction)
+
+stacks_results <- stacks_fit |> predict(new_data = training(splits)) |> 
+  bind_cols(training(splits)) |> 
+  select(Phase, .pred_class)
+
+(
+  stacks_confmat_recall <- stacks_results |> 
+    rename(Prediction = .pred_class, Truth = Phase) |> 
+    count(Prediction, Truth) |> 
+    complete(Prediction, Truth, fill = list(n = 0)) |> 
+    group_by(Truth) |> 
+    mutate(Freq = n / sum(n)) |> 
+    ungroup() |> 
+    ggplot(aes(
+      x = Truth, y = Prediction, fill = Freq, 
+      label = ifelse(!is.na(Freq), round(Freq, 2), '-')
+    )) +
+    geom_tile(color = "gray") +
+    geom_text() +
+    scale_fill_gradient2(low = "#ffffff", high = "#ef8a62", mid = "#ffffff", 
+                         limits = c(0, 1), breaks = seq(0, 1, by = 0.2),
+                         na.value = 'white') +
+    guides(fill = guide_colorbar(barwidth = 10)) +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+          panel.grid = element_blank(),
+          legend.title = element_text(vjust = 0.5, hjust = 0.5, margin = margin(r = 10)),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          axis.ticks = element_blank()) +
+    labs(fill = str_glue('Frequency\n(columns add to 1)'), x = 'True class', y = 'Predicted class')
+)
+
+(
+  stacks_confmat_precision <- stacks_results |> 
+    rename(Prediction = .pred_class, Truth = Phase) |> 
+    count(Prediction, Truth) |> 
+    complete(Prediction, Truth, fill = list(n = 0)) |> 
+    group_by(Prediction) |> 
+    mutate(Freq = n / sum(n)) |> 
+    ungroup() |> 
+    ggplot(aes(
+      x = Truth, y = Prediction, fill = Freq, 
+      label = ifelse(!is.na(Freq), round(Freq, 2), '-')
+    )) +
+    geom_tile(color = "gray") +
+    geom_text() +
+    scale_fill_gradient2(low = "#ffffff", high = "#ef8a62", mid = "#ffffff", 
+                         limits = c(0, 1), breaks = seq(0, 1, by = 0.2),
+                         na.value = 'white') +
+    guides(fill = guide_colorbar(barwidth = 10)) +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+          panel.grid = element_blank(),
+          legend.title = element_text(vjust = 0.5, hjust = 0.5, margin = margin(r = 10)),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          axis.ticks = element_blank()) +
+    labs(fill = str_glue('Frequency\n(rows add to 1)'), x = 'True class', y = 'Predicted class')
+)
 
 (
   knn_plot <- knn_results |> 
@@ -216,9 +282,10 @@ plot_save('knn_confmat_recall', knn_confmat_recall)
 plot_save('multinomial_confmat_recall', multinomial_confmat_recall)
 plot_save('rf_confmat_recall', rf_confmat_recall)
 plot_save('xgb_confmat_recall', xgb_confmat_recall)
+plot_save('ensemble_confmat_recall', stacks_confmat_recall)
 
 plot_save('knn_confmat_precision', knn_confmat_precision)
 plot_save('multinomial_confmat_precision', multinomial_confmat_precision)
 plot_save('rf_confmat_precision', rf_confmat_precision)
 plot_save('xgb_confmat_precision', xgb_confmat_precision)
-
+plot_save('ensemble_confmat_precision', stacks_confmat_precision)
