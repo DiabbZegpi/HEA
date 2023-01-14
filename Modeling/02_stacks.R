@@ -57,6 +57,7 @@ stacks_fit <- fit_members(stacks_blended)
 stopImplicitCluster()
 collect_parameters(stacks_fit, "knn_results")
 
+saveRDS(stacks_fit, here('Model results', 'stacks_fit.rds'))
 
 stack_vs_members <- test_phases |> 
   select(Phase) |> 
