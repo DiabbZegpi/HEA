@@ -267,8 +267,26 @@ stacks_results <- stacks_fit |> predict(new_data = training(splits)) |>
     labs(x = NULL, y = 'Cross-validation accuracy and 95% CI')
 )
 
+rf_auc <- rf_results |> 
+  collect_predictions(parameters = select_best(rf_results, metric = 'accuracy')) |> 
+  roc_auc(truth = Phase, .pred_AM:.pred_IM, estimator = 'macro_weighted') |> 
+  pull(.estimate)
 
+roc_curves <- rf_results |> 
+  collect_predictions(parameters = select_best(rf_results, metric = 'accuracy')) |>
+  group_by(id) |> 
+  roc_curve(Phase, .pred_AM:.pred_IM) |>
+  ungroup()
 
+best_model_roc_curves <- roc_curves |>
+  mutate(group = paste(id, .level)) |>
+  ggplot(aes(x = 1 - specificity, y = sensitivity)) +
+  # stat_summary(fun = mean, geom = 'line') +
+  geom_line(alpha = 0.8, aes(group = group)) +
+  geom_abline(linetype = 2) +
+  facet_wrap(~.level) +
+  labs(title = str_glue('Overall ROC AUC evaluated on 10-fold CV: {round(rf_auc, 2)}'),
+       subtitle = 'Best Random Forest hyperparameter configuration')
 
 plot_save('knn_results', knn_plot)
 plot_save('multinomial_results', multinomial_plot)
@@ -276,7 +294,7 @@ plot_save('rf_results', rf_plot)
 plot_save('xgb_results', xgb_plot)
 plot_save('ensemble_results', stacks_plot)
 plot_save('overall_results', overall_results)
-
+plot_save('best_model_roc_curves', best_model_roc_curves)
 
 plot_save('knn_confmat_recall', knn_confmat_recall)
 plot_save('multinomial_confmat_recall', multinomial_confmat_recall)
