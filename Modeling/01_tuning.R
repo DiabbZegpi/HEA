@@ -86,6 +86,19 @@ train_phases_clean <- train_phases |>
   arrange(desc(Elect.Diff)) |> 
   slice(3:nrow(cur_data()))
 
+# library(GGally)
+# paired_plot <- train_phases_clean |> 
+#   ggpairs(
+#     aes(color = Phase), 
+#     diag = list(continuous = wrap('densityDiag', alpha = 0.6))
+#   ) +
+#   scale_color_viridis_d(end = 0.8) +
+#   scale_fill_viridis_d(end = 0.8) +
+#   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+# 
+# ggsave(here('Plots', 'paired_plot.png'), plot = paired_plot,
+#        device = 'png', dpi = 700, width = 13, height = 11.5, bg = 'white')
+
 # Preprocessing ====
 
 base_recipe <- recipe(Phase ~ Elect.Diff + VEC + dHmix, data = train_phases_clean)
