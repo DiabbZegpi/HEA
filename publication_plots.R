@@ -66,7 +66,7 @@ plot_confusion_matrix <- function(.data, fill_by) {
       label = ifelse(!is.na(Freq), round(Freq, 2), '-')
     )) +
     geom_tile(color = "gray") +
-    geom_text() +
+    geom_text(size = 6) +
     scale_fill_gradient2(low = "#ffffff", high = "#ef8a62", mid = "#ffffff", 
                          limits = c(0, 1), breaks = seq(0, 1, by = 0.2),
                          na.value = 'white') +
@@ -109,7 +109,7 @@ stacks_results <- stacks_fit |> predict(new_data = training(splits)) |>
       label = ifelse(!is.na(Freq), round(Freq, 2), '-')
     )) +
     geom_tile(color = "gray") +
-    geom_text() +
+    geom_text(size = 6) +
     scale_fill_gradient2(low = "#ffffff", high = "#ef8a62", mid = "#ffffff", 
                          limits = c(0, 1), breaks = seq(0, 1, by = 0.2),
                          na.value = 'white') +
@@ -136,7 +136,7 @@ stacks_results <- stacks_fit |> predict(new_data = training(splits)) |>
       label = ifelse(!is.na(Freq), round(Freq, 2), '-')
     )) +
     geom_tile(color = "gray") +
-    geom_text() +
+    geom_text(size = 6) +
     scale_fill_gradient2(low = "#ffffff", high = "#ef8a62", mid = "#ffffff", 
                          limits = c(0, 1), breaks = seq(0, 1, by = 0.2),
                          na.value = 'white') +
@@ -162,7 +162,9 @@ stacks_results <- stacks_fit |> predict(new_data = training(splits)) |>
                labeller = labeller(.metric = c(
                  'accuracy' = 'Accuracy', 
                  'roc_auc' = 'ROC AUC',
-                 "precision" = "Precision"
+                 'precision' = 'Precision',
+                 'f_meas' = 'F1 Score',
+                 'recall' = 'Recall'
                ))) +
     labs(x = '# Nearest Neighbors', y = NULL, color = 'Distance Weighting Function') 
 )
@@ -181,7 +183,9 @@ stacks_results <- stacks_fit |> predict(new_data = training(splits)) |>
                labeller = labeller(.metric = c(
                  'accuracy' = 'Accuracy', 
                  'roc_auc' = 'ROC AUC',
-                 "precision" = "Precision"
+                 'precision' = 'Precision',
+                 'f_meas' = 'F1 Score',
+                 'recall' = 'Recall'
                ))) +
     labs(x = NULL, y = NULL) 
 )
@@ -198,7 +202,9 @@ stacks_results <- stacks_fit |> predict(new_data = training(splits)) |>
                labeller = labeller(.metric = c(
                  'accuracy' = 'Accuracy', 
                  'roc_auc' = 'ROC AUC',
-                 "precision" = "Precision"
+                 'precision' = 'Precision',
+                 'f_meas' = 'F1 Score',
+                 'recall' = 'Recall'
                ))) +
     labs(x = 'Minimal Node Size', y = NULL, color = '# Randomly Selected Predictors') 
 )
@@ -215,7 +221,9 @@ stacks_results <- stacks_fit |> predict(new_data = training(splits)) |>
                labeller = labeller(.metric = c(
                  'accuracy' = 'Accuracy', 
                  'roc_auc' = 'ROC AUC',
-                 "precision" = "Precision"
+                 'precision' = 'Precision',
+                 'f_meas' = 'F1 Score',
+                 'recall' = 'Recall'
                ), name = c(
                  'mtry' = '# Randomly Selected Predictors',
                  'trees' = '# Trees',
@@ -249,23 +257,55 @@ stacks_results <- stacks_fit |> predict(new_data = training(splits)) |>
          subtitle = 'The number indicates the quantity of remaining\npredictors (models) in the ensemble')
 )
 
+get_metrics <- function(tune_results, id) {
+  best_config <- select_best(tune_results, 'accuracy')$.config
+  
+  tune_results |> 
+    collect_metrics() |> 
+    filter(.config == best_config) |>
+    mutate(id = id) |> 
+    select(id, .metric, mean, std_err) 
+}
+
+get_metrics_stack <- function(stack_fitted, metric = 'accuracy') {
+  best_config <- stack_fitted$metrics |> 
+    filter(.metric == metric) |> 
+    arrange(desc(mean)) |> 
+    slice(1) |> 
+    pull(.config)
+  
+  stack_fitted$metrics |> 
+    filter(.config == best_config) |> 
+    mutate(id = 'Ensemble') |> 
+    select(id, .metric, mean, std_err) |> 
+    filter(.metric != 'num_members')
+}
+
+overall_results <- bind_rows(
+  get_metrics(knn_results, 'KNN'),
+  get_metrics(multinomial_results, 'Multinomial reg'),
+  get_metrics(xgb_results, 'XGBoost'),
+  get_metrics(rf_results, 'Random forest'),
+  get_metrics_stack(stacks_fit)
+) |> 
+  mutate(.metric = case_when(
+    .metric == 'f_meas' ~ 'F1 score',
+    .metric == 'roc_auc' ~ 'ROC AUC',
+    TRUE ~ .metric
+  ))
+
 (
-  overall_results <- bind_rows(
-    knn_results |> show_best('accuracy', n = 1) |> transmute(model = 'KNN', mean, std_err),
-    multinomial_results |> show_best('accuracy', n = 1) |> transmute(model = 'Multinomial Reg', mean, std_err),
-    xgb_results |> show_best('accuracy', n = 1) |> transmute(model = 'XGBoost', mean, std_err),
-    rf_results |> show_best('accuracy', n = 1) |> transmute(model = 'Random Forest', mean, std_err),
-    stacks_blended$metrics |> filter(.metric == 'accuracy') |> slice_max(mean, with_ties = FALSE) |> transmute(model = 'Ensemble', mean, std_err)
-  ) |> 
-    mutate(low_95 = mean - 1.96 * std_err,
-           high_95 = mean + 1.96 * std_err,
-           model = fct_reorder(model, mean)) |> 
-    ggplot(aes(x = model, y = mean, color = model, ymin = low_95, ymax = high_95, label = round(mean, 2))) +
-    geom_pointrange(show.legend = FALSE) +
-    geom_text(color = 'black', nudge_x = 0.3, size = 5) +
+  overall_plot <- overall_results |> 
+    ggplot(aes(x = reorder(id, mean), y = mean, color = .metric)) +
+    geom_point(position = position_dodge(width = 0.4), size = 3) +
+    geom_errorbar(aes(ymin = mean - 2 * std_err, ymax = mean + 2 * std_err),
+                  width = 0.45, position = position_dodge(width = 0.4),
+                  show.legend = FALSE) +
+    scale_y_continuous(breaks = seq(0, 1, by = 0.15)) +
     scale_color_brewer(palette = 'Set1') +
-    labs(x = NULL, y = 'Cross-validation accuracy and 95% CI')
+    labs(color = 'Metric:', y = '10-fold CV mean ± 2 std. errors', x = NULL)
 )
+
 
 rf_auc <- rf_results |> 
   collect_predictions(parameters = select_best(rf_results, metric = 'accuracy')) |> 
@@ -293,7 +333,7 @@ plot_save('multinomial_results', multinomial_plot)
 plot_save('rf_results', rf_plot)
 plot_save('xgb_results', xgb_plot)
 plot_save('ensemble_results', stacks_plot)
-plot_save('overall_results', overall_results)
+plot_save('overall_results', overall_plot)
 plot_save('best_model_roc_curves', best_model_roc_curves)
 
 plot_save('knn_confmat_recall', knn_confmat_recall)
@@ -307,3 +347,5 @@ plot_save('multinomial_confmat_precision', multinomial_confmat_precision)
 plot_save('rf_confmat_precision', rf_confmat_precision)
 plot_save('xgb_confmat_precision', xgb_confmat_precision)
 plot_save('ensemble_confmat_precision', stacks_confmat_precision)
+
+write_csv(overall_results, here('Model results', 'overall_results.csv'))

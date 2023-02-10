@@ -42,7 +42,7 @@ registerDoParallel(cl)
 
 stacks_blended <- blend_predictions(
   multiple_stack, 
-  metric = metric_set(accuracy), 
+  metric = metric_set(accuracy, precision, recall, roc_auc, f_meas), 
   penalty = seq(0.01, 0.2, length.out = 10),
   mixture = 1
 )

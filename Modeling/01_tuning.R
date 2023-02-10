@@ -45,7 +45,7 @@ splits <- initial_split(
 
 train_phases <- training(splits)
 test_phases <- testing(splits)
-metric <- metric_set(accuracy, roc_auc, precision)
+metric <- metric_set(accuracy, precision, recall, roc_auc, f_meas)
 
 set.seed(234)
 cv_strategy <- vfold_cv(
@@ -101,7 +101,7 @@ train_phases_clean <- train_phases |>
 
 # Preprocessing ====
 
-base_recipe <- recipe(Phase ~ Elect.Diff + VEC + dHmix, data = train_phases_clean)
+base_recipe <- recipe(Phase ~ Elect.Diff + VEC + dHmix, data = train_phases_clean) 
 
 normalize_recipe <- base_recipe |> 
   step_zv(all_numeric_predictors()) |> 
