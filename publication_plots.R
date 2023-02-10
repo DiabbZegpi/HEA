@@ -71,12 +71,15 @@ plot_confusion_matrix <- function(.data, fill_by) {
                          limits = c(0, 1), breaks = seq(0, 1, by = 0.2),
                          na.value = 'white') +
     guides(fill = guide_colorbar(barwidth = 10)) +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 14),
+          axis.text.y = element_text(size = 14),
+          axis.title = element_text(size = 16),
           panel.grid = element_blank(),
-          legend.title = element_text(vjust = 0.5, hjust = 0.5, margin = margin(r = 10)),
+          legend.title = element_text(vjust = 0.5, hjust = 0.5, margin = margin(r = 10), size = 16),
+          legend.text = element_text(size = 14),
           panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
-          axis.ticks = element_blank()) +
+          axis.ticks = element_blank())  +
     labs(fill = str_glue('Frequency\n({direction} add to 1)'), x = 'True class', y = 'Predicted class')
 }
 
@@ -114,12 +117,15 @@ stacks_results <- stacks_fit |> predict(new_data = training(splits)) |>
                          limits = c(0, 1), breaks = seq(0, 1, by = 0.2),
                          na.value = 'white') +
     guides(fill = guide_colorbar(barwidth = 10)) +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 14),
+          axis.text.y = element_text(size = 14),
+          axis.title = element_text(size = 16),
           panel.grid = element_blank(),
-          legend.title = element_text(vjust = 0.5, hjust = 0.5, margin = margin(r = 10)),
+          legend.title = element_text(vjust = 0.5, hjust = 0.5, margin = margin(r = 10), size = 16),
+          legend.text = element_text(size = 14),
           panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
-          axis.ticks = element_blank()) +
+          axis.ticks = element_blank())  +
     labs(fill = str_glue('Frequency\n(columns add to 1)'), x = 'True class', y = 'Predicted class')
 )
 
@@ -141,12 +147,15 @@ stacks_results <- stacks_fit |> predict(new_data = training(splits)) |>
                          limits = c(0, 1), breaks = seq(0, 1, by = 0.2),
                          na.value = 'white') +
     guides(fill = guide_colorbar(barwidth = 10)) +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 14),
+          axis.text.y = element_text(size = 14),
+          axis.title = element_text(size = 16),
           panel.grid = element_blank(),
-          legend.title = element_text(vjust = 0.5, hjust = 0.5, margin = margin(r = 10)),
+          legend.title = element_text(vjust = 0.5, hjust = 0.5, margin = margin(r = 10), size = 16),
+          legend.text = element_text(size = 14),
           panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
-          axis.ticks = element_blank()) +
+          axis.ticks = element_blank())   +
     labs(fill = str_glue('Frequency\n(rows add to 1)'), x = 'True class', y = 'Predicted class')
 )
 
