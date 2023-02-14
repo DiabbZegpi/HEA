@@ -18,9 +18,10 @@ theme_update(text = element_text(size = 14),
 
 list.files(here('Model results')) |> 
   enframe(name = NULL, value = 'filename') |> 
+  filter(str_detect(filename, '\\.rds')) |> 
   transmute(loaded_file = map(filename, ~ here('Model Results', .x) |> readRDS())) |> 
   pull(loaded_file) |> 
-  set_names(nm = str_remove(list.files(here('Model results')), '\\.rds$')) |> 
+  set_names(nm = str_remove(list.files(here('Model results'))[grepl(x = list.files(here('Model results')), pattern = '\\.rds')], '\\.rds$')) |> 
   list2env(envir = .GlobalEnv)
 
 hea <- read_csv(here('Data', 'HEA cleaned.csv'))
@@ -96,6 +97,14 @@ xgb_confmat_recall <- plot_confusion_matrix(xgb_results, Truth)
 xgb_confmat_precision <- plot_confusion_matrix(xgb_results, Prediction)
 
 stacks_results <- stacks_fit |> predict(new_data = training(splits)) |> 
+  bind_cols(training(splits)) |> 
+  select(Phase, .pred_class)
+
+stacks_results_2 <- stacks_fit_2 |> predict(new_data = training(splits)) |> 
+  bind_cols(training(splits)) |> 
+  select(Phase, .pred_class)
+
+stacks_results_3 <- stacks_fit_3 |> predict(new_data = training(splits)) |> 
   bind_cols(training(splits)) |> 
   select(Phase, .pred_class)
 
@@ -276,7 +285,7 @@ get_metrics <- function(tune_results, id) {
     select(id, .metric, mean, std_err) 
 }
 
-get_metrics_stack <- function(stack_fitted, metric = 'accuracy') {
+get_metrics_stack <- function(stack_fitted, .id, metric = 'accuracy') {
   best_config <- stack_fitted$metrics |> 
     filter(.metric == metric) |> 
     arrange(desc(mean)) |> 
@@ -285,7 +294,7 @@ get_metrics_stack <- function(stack_fitted, metric = 'accuracy') {
   
   stack_fitted$metrics |> 
     filter(.config == best_config) |> 
-    mutate(id = 'Ensemble') |> 
+    mutate(id = .id) |> 
     select(id, .metric, mean, std_err) |> 
     filter(.metric != 'num_members')
 }
@@ -295,7 +304,9 @@ overall_results <- bind_rows(
   get_metrics(multinomial_results, 'Multinomial reg'),
   get_metrics(xgb_results, 'XGBoost'),
   get_metrics(rf_results, 'Random forest'),
-  get_metrics_stack(stacks_fit)
+  get_metrics_stack(stacks_fit, .id = 'Full Ensemble'),
+  get_metrics_stack(stacks_fit_2, .id = 'Ensemble of KNN + RF + XGB'),
+  get_metrics_stack(stacks_fit_3, .id = 'Ensemble of KNN + RF')
 ) |> 
   mutate(.metric = case_when(
     .metric == 'f_meas' ~ 'F1 score',
@@ -311,6 +322,7 @@ overall_results <- bind_rows(
                   width = 0.45, position = position_dodge(width = 0.4),
                   show.legend = FALSE) +
     scale_y_continuous(breaks = seq(0, 1, by = 0.15)) +
+    scale_x_discrete(labels = scales::label_wrap(10)) +
     scale_color_brewer(palette = 'Set1') +
     labs(color = 'Metric:', y = '10-fold CV mean ± 2 std. errors', x = NULL)
 )
