@@ -1,0 +1,14 @@
+name: HEA-phase-predictor
+title: HEA-phase-predictor
+username:
+account: diabb-zegpi
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 8333719
+bundleId: 6855062
+url: https://diabb-zegpi.shinyapps.io/HEA-phase-predictor/
+when: 1676575062.32125
+lastSyncTime: 1676575062.32125
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: .gitattributes|01_eda.pdf|01_eda.qmd|02_ML_benchmark.pdf|02_ML_benchmark.qmd|Data/Base de datos 1.csv|Data/Base de datos 2.csv|Data/HEA cleaned.csv|Data/HEA melted.csv|data-science-model.png|Icons/prescription-bottle-solid.svg|Modeling/01_tuning.R|Modeling/02_stacks.R|Modeling/03_publication_plots.R|Modeling/04_predictions.R|nul|references.bib|Model results|Plots
