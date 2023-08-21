@@ -88,23 +88,21 @@ best_rf <-
   select_by_one_std_err(metric = 'accuracy', -min_n)
 
 finalized_wf <- finalize_workflow(rf_wf, best_rf)
-last_rf <- last_fit(finalized_wf, split = splits)
+last_rf <- last_fit(finalized_wf, split = splits, metrics = metric)
 
 last_rf |> collect_metrics() 
 # A tibble: 2 × 4
-# .metric  .estimator .estimate .config             
-# <chr>    <chr>          <dbl> <chr>               
-#   1 accuracy multiclass     0.808 Preprocessor1_Model1
-#   2 roc_auc  hand_till      0.971 Preprocessor1_Model1
+# .metric   .estimator .estimate .config             
+# accuracy  multiclass     0.808 Preprocessor1_Model1
+# precision macro          0.742 Preprocessor1_Model1
+# recall    macro          0.727 Preprocessor1_Model1
+# f_meas    macro          0.730 Preprocessor1_Model1
+# roc_auc   hand_till      0.972 Preprocessor1_Model1
 
 final_rf <- extract_workflow(last_rf)
 
 saveRDS(rf_results, file = here('Model results', 'RF v2', 'rf_results_v2.rds'))
 saveRDS(final_rf, file = here('Model results', 'RF v2', 'rf_fit_v2.rds'))
-
-
-
-
 
 
 
