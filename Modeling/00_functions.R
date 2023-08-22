@@ -1,4 +1,5 @@
 library(tidyverse)
+library(tidymodels)
 library(ggpubr)
 
 theme_set(theme_pubclean())
@@ -69,4 +70,14 @@ plot_confusion_matrix <- function(.data, fill_by) {
       axis.ticks = element_blank()
     )  +
     labs(fill = str_glue('Frequency\n({direction} add to 1)'), x = 'True class', y = 'Predicted class')
+}
+
+get_metrics <- function(tune_results, id) {
+  best_config <- select_best(tune_results, 'accuracy')$.config
+  
+  tune_results |> 
+    collect_metrics() |> 
+    filter(.config == best_config) |>
+    mutate(id = id) |> 
+    select(id, .metric, mean, std_err) 
 }
