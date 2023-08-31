@@ -3,18 +3,18 @@ library(tidyverse)
 library(tidymodels)
 tidymodels_prefer()
 
-rf_fit <- readRDS(here('Model results', 'rf_fit.rds'))
+rf_fit <- readRDS(here('Model results', 'v2', 'rf_fit_v2.rds'))
 
 new_hea <- 
   tribble(
-    ~id, ~dHmix, ~Elect.Diff, ~VEC,
-    'Alloy #1', 0.07504, 0.125, 7.606,
-    'Alloy #2', 0.4704, 0.124, 7.646
+    ~id, ~dHmix, ~Elect.Diff, ~VEC, ~gamma_factor,
+    'HEA #1', 0.4704, 0.124, 7.646, 1.025,
+    'HEA #2', 0.07504, 0.125, 7.606, 1.196
   )
 
 prob_predictions <- 
   predict(rf_fit, new_data = new_hea, type = 'prob') |> 
-  mutate(id = c('Alloy #1', 'Alloy #2'))
+  mutate(id = c('HEA #1', 'HEA #2'))
 
 class_preds <- 
   prob_predictions |> 
@@ -46,7 +46,12 @@ theme_update(
 
 labels <- 
   new_hea |> 
-  mutate(label = paste0('VEC: ', VEC, '\ndx: ', Elect.Diff, '\ndHmix: ', dHmix))
+  mutate(label = paste0(
+    'VEC: ', VEC, '\n',
+    'dx: ', Elect.Diff, '\n',
+    'dHmix: ', dHmix, '\n',
+    'gamma_p: ', gamma_factor
+  ))
 
 (
   prediction_plot <- preds_df |> 
@@ -54,19 +59,20 @@ labels <-
     mutate(across(.pred_class:class, \(name) str_remove(name, '\\.pred_'))) |> 
     ggplot(aes(x = reorder(class, probability), y = probability, fill = probability)) +
     geom_col(show.legend = FALSE, alpha = 0.8) +
-    geom_text(aes(label = paste0(round(probability, 4) * 100, '%')), nudge_y = 0.05, size = 5) +
+    geom_text(aes(label = paste0(round(probability, 4) * 100, '%')), nudge_y = 0.12, size = 5) +
     geom_label(
-      data = labels, 
-      aes(label = label, x = 2, y = 0.27),
+      data = labels,
+      aes(label = label, x = 2.5, y = 0.65),
       size = 5,
       inherit.aes = FALSE,
       hjust = 0,
-      fill = NA
+      fill = NA,
+      parse = FALSE
     ) +
     scale_y_continuous(
       labels = label_percent(), 
       breaks = seq(0.25, 1, by = 0.25),
-      expand = expansion(add = c(0, 0.04))
+      expand = expansion(add = c(0, 0.08))
     ) +
     scale_fill_viridis_c(option = 'B', begin = 0.1, end = 0.9) +
     coord_flip() +
@@ -94,4 +100,4 @@ plot_save <- function(name, plot, width = plot_width, height = plot_height, dpi 
   )
 }
 
-plot_save('new_alloys_july2023', prediction_plot)
+plot_save('new_alloys_august2023', prediction_plot)
