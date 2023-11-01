@@ -1,0 +1,74 @@
+.content {
+  padding-left: 30px;
+  padding-right: 30px;
+  max-width: 1500px;
+}
+
+
+.parameters {
+  text-align: center;
+}
+
+ 
+.js-irs-0 .irs-single, .js-irs-0 .irs-bar-edge, .js-irs-0 .irs-bar {
+  background: #685cac;
+  border-top: 1px solid #685cac;
+  border-bottom: 1px solid #685cac;
+}
+
+
+.js-irs-1 .irs-single, .js-irs-1 .irs-bar-edge, .js-irs-1 .irs-bar {
+  background: #685cac;
+  border-top: 1px solid #685cac;
+  border-bottom: 1px solid #685cac;
+}
+
+
+.js-irs-2 .irs-single, .js-irs-2 .irs-bar-edge, .js-irs-2 .irs-bar {
+  background: #685cac;
+  border-top: 1px solid #685cac;
+  border-bottom: 1px solid #685cac;
+}
+
+
+.btn-default {
+  background-color: #685cac;
+  border-color: #685cac;
+  color: white;
+}
+
+
+.btn-default:hover {
+  background-color: #c36c8c;
+  border-color: #c36c8c;
+  color: white;
+}
+ 
+
+.irs-grid-text {
+  font-size: 0.8em
+}
+
+
+.irs-single {
+  font-size: 0.9em !important;
+  background-color: #685cac !important;
+  color: white;
+}
+
+
+.irs-min, .irs-max {
+  font-size: 1em !important;
+  background-color: white !important;
+  color: black;
+}
+
+
+.box {
+  border-top-color: #685cac;
+}
+
+
+.control-label {
+  font-size: 1.2em;
+}
