@@ -51,19 +51,9 @@ set.seed(987)
 rf_pdp <- model_profile(explainer = rf_explain, N = 500)
 plot(rf_pdp)
 
-# SHAP --------------------------------------------------------------------
-
-set.seed(678)
-new_obs <- testing(splits) |> 
-  slice_sample(n = 10)
-
-set.seed(456)
-rf_shap <- shap_aggregated(
-  explainer = rf_explain,
-  new_observations = new_obs
-)
-
-
+saveRDS(rf_explain, 'Model results/Explainers/general_rf_explainer.rds')
+saveRDS(rf_varimp, 'Model results/Explainers/permutation_varimp_rf.rds')
+saveRDS(rf_pdp, 'Model results/Explainers/pdp_rf.rds')
 
 
 
