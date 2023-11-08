@@ -5,7 +5,7 @@ account: diabb-zegpi
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 9826247
-bundleId: 7670189
+bundleId: 7904126
 url: https://diabb-zegpi.shinyapps.io/HEA-phase-predictor-v2/
 version: 1
 asMultiple: FALSE
